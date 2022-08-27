@@ -66,15 +66,18 @@ public class StreamingJava {
     // Aufgabe 3) b)
     public static double averageCost(Stream<String> lines) {
         // TODO
-
-        return 0d;
+        return lines.mapToDouble(s -> Double.parseDouble
+                        (s.split(",")[12]))
+                .average()
+                .getAsDouble();
     }
 
     // Aufgabe 3) c)
     public static long countCleanEnergyLevy(Stream<String> stream) {
         // TODO
-
-        return 0L;
+        return stream.map(s -> s.split(",")[10])
+                .filter(val -> val.equals("0") || val.equals(""))
+                .count();
     }
 
     // Aufgabe 3) d)
@@ -86,17 +89,18 @@ public class StreamingJava {
                                      double Tax,double CleanEnergyLevy,
                                      double CarbonTax,double Amount) {
 
-        public NaturalGasBilling(String[] strings) {
+   /**     public NaturalGasBilling(String[] strings) {
             this {
                 format.parse(strings[0]);
 
             }
-        }
+        } **/
     }
+
 
     public static Stream<NaturalGasBilling> orderByInvoiceDateDesc(Stream<String> stream){
         Stream <NaturalGasBilling> str = Stream.empty();
-        var r = stream.map(it -> it.split(",")).map(it -> new NaturalGasBilling(it));
+        //var r = stream.map(it -> it.split(",")).map(it -> new NaturalGasBilling(it));
 
         return str;
     }
