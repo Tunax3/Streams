@@ -1,5 +1,10 @@
+import jdk.jshell.execution.StreamingExecutionControl;
+
 import java.io.*;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.*;
@@ -7,14 +12,17 @@ import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
+import java.util.stream.StreamSupport;
 
 import static java.lang.Byte.parseByte;
 import static java.lang.Byte.valueOf;
+import static java.lang.Double.NaN;
 import static java.lang.Double.parseDouble;
 
 public class StreamingJava {
 
-    public static void main (String[]args) throws IOException {
+    public static void main (String[]args) throws IOException, ParseException {
+        NaturalGasBilling.serialize(NaturalGasBilling.orderByInvoiceDateDesc(fileLines("FIles/NaturalGasBilling.csv")));
     }
     // Aufgabe 2) a)
     public static <E> Stream<E> flatStreamOf(List<List<E>> list) {
@@ -109,19 +117,20 @@ public class StreamingJava {
     public double CarbonTax;
     public double Amount;
 
-    static SimpleDateFormat formatter = new SimpleDateFormat("yyyy-MM-dd");
+    //static SimpleDateFormat formatter = new SimpleDateFormat("yyyy-MM-dd");
 
-    public record NaturalGasBilling(Date Invoice,Date From,Date To,double Billing ,double BilledGJ,double BasicCharge,
+    public record NaturalGasBilling(Date Invoice,Date From,Date To,int Billing ,double BilledGJ,double BasicCharge,
                                      double DeliveryCharges,double StorageAndTransport,double CommodityCharges,
                                      double Tax,String CleanEnergyLevy,
                                      double CarbonTax,double Amount) {
+        static SimpleDateFormat formatter = new SimpleDateFormat("yyyy-MM-dd");
         public NaturalGasBilling(String[] strings) throws ParseException {
 
             this(
                     formatter.parse(strings[0]),
                     formatter.parse(strings[1]),
                     formatter.parse(strings[2]),
-                    parseDouble(strings[3]),
+                    Integer.valueOf(strings[3]),
                     parseDouble(strings[4]),
                     parseDouble(strings[5]),
                     parseDouble(strings[6]),
@@ -133,19 +142,18 @@ public class StreamingJava {
                     parseDouble(strings[12])
             );
         }
-        /*public static void main(String[]args) throws IOException, ParseException {
-            String[] str = new String[]{"2012-04-19","2012-03-19","2012-04-19","31","3.2","12.06","11.29","4.37","10.76","2.12","","3.97","44.57",
-                    "2012-05-17","2012-04-19","2012-05-17","28","3.4","10.89","11.99","4.64","10.12","2.09","","4.22","43.95",
-                    "2012-06-18","2012-05-17","2012-06-18","32","0.9","12.45","3.09","1.23","2.68","1.03","","1.12","21.60"};
 
-            serialize(orderByInvoiceDateDesc(Arrays.stream(str)));
-        }*/
+        public static void main(String[] args) throws IOException, ParseException {
+        }
 
         public static Stream<NaturalGasBilling> orderByInvoiceDateDesc(Stream<String> stream) {
-            return stream.map(it -> it.split(",", 12))
+            return stream.map(it -> it.split(","))
                     .map(it -> {
+                        System.out.println(Arrays.toString(it));
                         try {
-                            return new NaturalGasBilling(it);
+                            var ne = new NaturalGasBilling(it);
+                            System.out.println(ne);
+                            return ne ;
                         } catch (ParseException e) {
                             throw new RuntimeException(e);
                         }
@@ -155,7 +163,8 @@ public class StreamingJava {
         // Aufgabe 3) e)
         // TODO: Implement object method: "Stream<Byte> toBytes()" for record "NaturalGasBilling".
         public Stream<Byte> toBytes() {
-            Stream<String> convert = Stream.of(Invoice.toString(), ",", From.toString(), ",", To.toString(), ",",
+
+            Stream<String> convert = Stream.of(formatter.format(Invoice), ",", formatter.format(From), ",", formatter.format(To), ",",
                     String.valueOf(Billing), ",", String.valueOf(BilledGJ), ",", String.valueOf(BasicCharge), ",",
                     String.valueOf(DeliveryCharges), ",", String.valueOf(StorageAndTransport), ",",
                     String.valueOf(CommodityCharges), ",", String.valueOf(Tax), ",", CleanEnergyLevy, ",",
@@ -163,15 +172,15 @@ public class StreamingJava {
             StringBuilder res = new StringBuilder();
 
             convert.forEachOrdered(val -> res.append(val));
-            return Stream.of(res).map(val -> Byte.parseByte(String.valueOf(val)));
+            return res.toString().chars().mapToObj(it -> (byte) it);
+            //return Stream.of(res).map(val -> Byte.parseByte(String.valueOf(val)));
         }
 
         // Aufgabe 3) f)
         // TODO: Implement static method: "Stream<Byte> serialize(Stream<NaturalGasBilling> stream)".
 
         public static Stream<Byte> serialize(Stream<NaturalGasBilling> stream) throws IOException, ParseException {
-            Stream<Byte> res = orderByInvoiceDateDesc(stream.map(NaturalGasBilling::toString))
-                    .flatMap(val -> val.toBytes());
+            Stream<Byte> res = stream.flatMap(val -> val.toBytes());
 
             File sample = new File("FIles/sample.csv");
             PrintWriter writing = new PrintWriter(sample);
@@ -180,7 +189,8 @@ public class StreamingJava {
                     "Billed GJ,Basic charge,Delivery charges,Storage and transport,Commodity charges," +
                     "Tax,Clean energy levy,Carbon tax,Amount \n");
 
-            res.map(val -> String.valueOf(val)).forEachOrdered(val -> writing.write(val + "\n"));
+            res.map(val -> String.valueOf(val).split("@",13))
+                    .forEachOrdered(val -> writing.write(Arrays.toString(val)));
 
             writing.close();
 
@@ -192,9 +202,9 @@ public class StreamingJava {
         // TODO: Execute the call: "deserialize(serialize(orderByInvoiceDateDesc(fileLines(Datei aus f))))"
         // TODO: in a main Method and print the output to the console.
 
-        public static Stream<NaturalGasBilling> deserialize(Stream<Byte> stream){
+        public static Stream<NaturalGasBilling> deserialize(Stream<Byte> stream) {
             return stream.map(val -> String.valueOf(val))
-                    .map(str -> str.split(",",12))
+                    .map(str -> str.split(","))
                     .map(nat -> {
                         try {
                             return new NaturalGasBilling(nat);
@@ -204,12 +214,28 @@ public class StreamingJava {
                         return null;
                     });
         }
+
         // Aufgabe 3) h)
-        public static Stream<File> findFilesWith(String dir, String startsWith, String endsWith, int maxFiles) {
+        public static Stream<File> findFilesWith(String dir, String startsWith, String endsWith, int maxFiles) throws IOException {
             // TODO
+            var root = Paths.get(dir);
+            List<File> files = Files.walk(root)
+                    .filter(path -> path.toFile().isFile())
+                    .filter(path -> path.toFile().getName().startsWith(startsWith))
+                    .filter(path -> path.toFile().getName().endsWith(endsWith))
+                    .sorted(Comparator.comparingLong(value -> {
+                        try {
+                            return Files.size(value);
+                        } catch (IOException e) {
+                            throw new RuntimeException(e);
+                        }
+                    }))
+                    .limit(maxFiles)
+                    .map(Path::toFile)
+                    .toList();
 
 
-            return null;
+            return StreamSupport.stream(files.spliterator(), true);
         }
     }
 }
