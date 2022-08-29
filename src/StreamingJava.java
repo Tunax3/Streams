@@ -168,7 +168,7 @@ public class StreamingJava {
                     String.valueOf(Billing), ",", String.valueOf(BilledGJ), ",", String.valueOf(BasicCharge), ",",
                     String.valueOf(DeliveryCharges), ",", String.valueOf(StorageAndTransport), ",",
                     String.valueOf(CommodityCharges), ",", String.valueOf(Tax), ",", CleanEnergyLevy, ",",
-                    String.valueOf(CarbonTax), ",", String.valueOf(Amount));
+                    String.valueOf(CarbonTax), ",", String.valueOf(Amount), "\n");
             StringBuilder res = new StringBuilder();
 
             convert.forEachOrdered(val -> res.append(val));
@@ -189,8 +189,7 @@ public class StreamingJava {
                     "Billed GJ,Basic charge,Delivery charges,Storage and transport,Commodity charges," +
                     "Tax,Clean energy levy,Carbon tax,Amount \n");
 
-            res.map(val -> String.valueOf(val).split("@",13))
-                    .forEachOrdered(val -> writing.write(Arrays.toString(val)));
+            res.forEachOrdered(val -> writing.write(val));
 
             writing.close();
 
